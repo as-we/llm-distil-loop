@@ -47,53 +47,99 @@ cp templates/ml-test-checklist.md .kiro/settings/templates/
 
 ---
 
-## Option A2: Integrate with GitHub SpecKit (specify CLI)
+## Option A2: Integrate with GitHub SpecKit (specify CLI) — Extension method
 
-Use this option if your project uses [GitHub SpecKit](https://github.com/as-we/prior-art-investigation) instead of Kiro SDD.
+This option uses the **SpecKit Extension system** for the tightest integration: the distillation loop is triggered automatically as a `before_implement` hook when ML-related tickets are detected.
 
-### Step 1: Copy prompt files
-
-- [ ] Copy `github/prompts/kiro-ml-distill-loop.prompt.md` into `.github/prompts/`
-- [ ] Copy `github/prompts/kiro-ml-accuracy-verify.prompt.md` into `.github/prompts/`
+### Step 1: Install the extension
 
 ```bash
-cp github/prompts/kiro-ml-distill-loop.prompt.md    .github/prompts/
-cp github/prompts/kiro-ml-accuracy-verify.prompt.md .github/prompts/
+# From your project root (where .specify/ exists)
+specify extension add https://github.com/as-we/llm-distil-loop
 ```
 
-### Step 1b: Copy the rules file (add to copilot-instructions.md or steering)
+This registers `llm-distil-loop` in `.specify/extensions.yml` and copies the extension files.
 
-- [ ] Append `kiro/settings/rules/ml-distillation-rules.md` to `.github/copilot-instructions.md`
-  or copy to `.kiro/steering/ml-distillation-rules.md` if using Kiro steering
+> If `specify extension add` is not available in your version, follow the manual steps below.
+
+### Step 1 (manual): Copy extension files
 
 ```bash
-cat kiro/settings/rules/ml-distillation-rules.md >> .github/copilot-instructions.md
+mkdir -p .specify/extensions/llm-distil-loop
+cp -r speckit/ .specify/extensions/llm-distil-loop/
+cp github/agents/llm-distil-loop.agent.md  .github/agents/
+cp github/agents/llm-distil-verify.agent.md .github/agents/
 ```
 
-### Step 2: Copy schema and test templates
+### Step 2: Register the before_implement hook
 
-- [ ] Copy `templates/ml-schema.md` to `.specify/templates/` or `docs/`
-- [ ] Copy `templates/ml-test-checklist.md` to `.specify/templates/` or `docs/`
+Add the following to `.specify/extensions.yml` under `hooks.before_implement`:
+
+```yaml
+hooks:
+  before_implement:
+    - extension: llm-distil-loop
+      command: llm-distil-loop
+      enabled: true
+      optional: true
+      condition: "tasks.md contains 'ML' OR tasks.md contains 'distil' OR tasks.md contains 'LLM'"
+      description: "ML distillation ticket detected — run LLM label generation loop before implementation"
+      prompt: "This ticket involves ML/distillation. Run the LLM → ML distillation loop first?"
+```
+
+See `speckit/extensions.yml.sample` for the full sample.
+
+### Step 3: Copy schema and test templates
 
 ```bash
 cp templates/ml-schema.md         .specify/templates/
 cp templates/ml-test-checklist.md .specify/templates/
 ```
 
-### Step 6 (SpecKit): Add to AGENTS.md
+Fill in the `[PLACEHOLDER]` values in `ml-schema.md` (LLM_RESULTS_DIR, DATASET_PATH, MODEL_OUTPUT_PATH, ML_FRAMEWORK, TARGET).  
+The extension commands read these values automatically at runtime.
 
-Add to your project's `AGENTS.md` so the AI knows when to invoke these loops:
+### Step 4: Copy distillation rules to copilot-instructions.md
 
-```markdown
-## ML Accuracy Loop (for tickets involving LLM → ML distillation)
-- `/kiro-ml-distill-loop` — collect LLM inference data → train → evaluate (4-step loop)
-- `/kiro-ml-accuracy-verify` — human-label-based root cause analysis → generic fixes (5-step loop)
+```bash
+cat kiro/settings/rules/ml-distillation-rules.md >> .github/copilot-instructions.md
 ```
 
-> Fill in `ml-schema.md` during the design phase. Keep it synchronized with your training scripts.  
-> `ml-test-checklist.md` gates each training iteration — run all applicable checks before calling the loop done.
+### Step 5: Add to AGENTS.md
 
-### Step 3: Replace placeholders
+```markdown
+## ML Distillation Loop (for tickets involving LLM → ML)
+- `/llm-distil-loop` — 4-step loop: generate LLM labels → prepare data → train → validate accuracy
+- `/llm-distil-verify` — 5-step loop: human labels → root cause → generic fix → re-verify
+```
+
+### How it works
+
+When you run `speckit.implement` on an ML-related ticket, the `before_implement` hook fires:
+
+```
+speckit.implement (GROOVE-XXX)
+  ↓
+[before_implement hook detected]
+  → "This ticket involves ML/distillation. Run the LLM → ML distillation loop first?"
+  ↓ yes
+/llm-distil-loop
+  → Step 1: LLM inference
+  → Step 2: Feature prep
+  → Step 3: Train model
+  → Step 4: Validate accuracy
+    → if fails → /llm-distil-verify (root cause → fix → re-verify)
+    → if passes → proceed to speckit.implement
+```
+
+---
+
+## Option B: Standalone (no Kiro / SpecKit)
+
+### Step 1: Copy prompt files
+
+- [ ] Copy `github/prompts/kiro-ml-distill-loop.prompt.md` into `.github/prompts/`
+- [ ] Copy `github/prompts/kiro-ml-accuracy-verify.prompt.md` into `.github/prompts/`
 
 Replace `[PLACEHOLDER]` values in `kiro-ml-distill-loop.prompt.md`:
 

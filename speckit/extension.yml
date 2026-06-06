@@ -1,0 +1,35 @@
+schema_version: "1.0"
+
+extension:
+  id: llm-distil-loop
+  name: "LLM → ML Distillation Loop"
+  version: "1.0.0"
+  description: "4-step iterative loop: LLM generates labeled data → evaluate quality → train lightweight ML model → validate accuracy"
+  author: as-we
+  repository: https://github.com/as-we/llm-distil-loop
+  license: Apache-2.0
+
+requires:
+  speckit_version: ">=0.7.0"
+  tools:
+    - name: python
+      required: true
+    - name: mlflow
+      required: false
+
+provides:
+  commands:
+    - name: llm-distil-loop
+      file: commands/llm-distil-loop.md
+      description: "Run 4-step LLM → ML distillation loop: generate labels → prepare data → train → validate"
+    - name: llm-distil-verify
+      file: commands/llm-distil-verify.md
+      description: "Run 5-step accuracy verification: compare against human labels → root cause analysis → fix"
+
+hooks:
+  before_implement:
+    - command: llm-distil-loop
+      optional: true
+      condition: "tasks.md contains 'ML' OR tasks.md contains 'distil' OR tasks.md contains 'LLM'"
+      description: "ML distillation ticket detected — run LLM label generation loop before implementation"
+      prompt: "This ticket involves ML/distillation. Run the LLM → ML distillation loop first?"

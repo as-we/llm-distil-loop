@@ -1,0 +1,17 @@
+# extensions.yml — サンプル（llm-distil-loop エクステンション追加後）
+#
+# 既存の .specify/extensions.yml に以下の before_implement フックを追記する。
+# before_implement セクションが既に存在する場合は、エントリを追加するだけでよい。
+#
+# コピー先: .specify/extensions.yml の before_implement セクション
+
+hooks:
+  before_implement:
+    # --- llm-distil-loop: ML蒸留チケット検出フック ---
+    - extension: llm-distil-loop
+      command: llm-distil-loop
+      enabled: true
+      optional: true
+      condition: "tasks.md contains 'ML' OR tasks.md contains 'distil' OR tasks.md contains 'LLM'"
+      description: "ML distillation ticket detected — run LLM label generation loop before implementation"
+      prompt: "This ticket involves ML/distillation. Run the LLM → ML distillation loop first?"
