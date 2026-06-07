@@ -4,6 +4,37 @@
 
 ---
 
+## Quick Demo
+
+No API key required. Uses a mock LLM teacher and the Iris dataset.
+
+```bash
+pip install scikit-learn lightgbm pandas
+python example/run.py
+```
+
+```
+[Step 1] Running mock LLM teacher on 150 samples...
+  → 150 samples generated
+
+[Step 2] Applying quality gate (reject empty 'reason')...
+  → Rejected 5 samples (empty reason)
+  → 145 samples passed quality gate
+
+[Step 3] Training LightGBM student model...
+  → Validation F1 (vs LLM labels): 0.898
+
+[Step 4] Validating against ground truth (human labels)...
+  → F1 vs ground truth: 0.967  (target: 0.85)
+
+✅ Target met (0.967 >= 0.85) — Loop complete.
+```
+
+The mock LLM injects ~10% label noise and ~5% empty-reason samples to demonstrate the quality gate.  
+Replace `mock_llm_teacher()` in `example/run.py` with your real LLM API call.
+
+---
+
 ## What This Is
 
 A 4-step iterative loop:
